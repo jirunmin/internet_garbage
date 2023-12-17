@@ -1,51 +1,56 @@
 import socket
-import time
-import threading
-import random
+from UserInfo import UserInfo
+import json
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(('127.0.0.1', 9999))
+class Server:
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.server_socket = None
 
-s.listen(5)
-# print('Waiting for connection...')
-x = random.randint(1, 10000)
+    def start(self):
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.bind((self.host, self.port))
+        self.server_socket.listen(1)
+        print(f"Server listening on {self.host}:{self.port}")
 
-def tcplink(sock, addr):
-    print("Please guess a number, which ranges from 1 to 10000.")
-    cnt = 0
-    # print('Accept new connection from %s:%s...' % addr)
-    # sock.send(b'Welcome!')
-    while True:
-        data = sock.recv(1024)
-        time.sleep(1)
-        if not data:
-            break
+        while True:
+            client_socket, client_address = self.server_socket.accept()
+            print(f"New connection from {client_address[0]}:{client_address[1]}")
 
-        number = int(data.decode())
-        result = None
-        cnt += 1
+            # Handle client request
+            request = client_socket.recv(1024).decode()
+            print(request)
+            if request == "REGISTER":
+                response = "SUCCESS"
+                client_socket.send(response.encode())
+                self.register_user(client_socket)
 
-        if number == x:
-            result = "correct"
-        elif number > x:
-            result = "large"
-        else:
-            result = "small"
+            client_socket.close()
 
-        time.sleep(1)
-        print("The number", number, "is", result)
-        if result == "correct":
-            print("You guess", cnt ,"time(s)")
+    def register_user(self, client_socket):
+        data = client_socket.recv(1024).decode()
+        user_json = json.loads(data)  # Convert JSON string to Python dictionary
 
-        sock.send(result.encode())
-        # sock.send(('Hello, %s!' % data.decode('utf-8')).encode('utf-8'))
+        # Extract user information from the dictionary
+        username = user_json['userName']
+        password = user_json['userPassword']
+        userPhone = user_json['userPhone']
 
-    sock.close()
-    # print('Connection from %s:%s closed.' % addr)
+        # Save user information to database or perform any other necessary actions
+        # ...
 
-while True:
-    # 接受一个新连接:
-    sock, addr = s.accept()
-    # 创建新线程来处理TCP连接:
-    t = threading.Thread(target=tcplink, args=(sock, addr))
-    t.start()
+        # Send response to client
+        response = "SUCCESS"
+        client_socket.send(response.encode())
+
+    def stop(self):
+        if self.server_socket:
+            self.server_socket.close()
+            print("Server stopped")
+
+
+if __name__ == "__main__":
+    server = Server("localhost", 8000)
+    server.start()
+

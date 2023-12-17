@@ -1,6 +1,10 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout
 from PyQt5.QtCore import QFile, QTextStream
+import warnings
+
+warnings.filterwarnings("ignore",category=DeprecationWarning)
+
 
 class RegistrationWindow(QWidget):
     def __init__(self):
