@@ -1,18 +1,24 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QFormLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox
 from PyQt5.QtCore import QFile, QTextStream
+from CSFramework.client import Client
+from CSFramework.UserInfo import UserInfo
 
-class QQStyleRegistrationWindow(QWidget):
+
+class RegistrationWindow(QWidget):
     def __init__(self):
         super().__init__()
 
         self.init_ui()
+        self.current_page = "Register"
+        self.client = Client("localhost", 8000)
+
 
     def init_ui(self):
-        self.setWindowTitle('QQ风格登录/注册界面')
+        self.setWindowTitle('登录/注册')
         self.setGeometry(300, 300, 600, 400)
 
-        self.load_stylesheet('style.qss')
+        self.load_stylesheet('style/style.qss')
         # 创建界面元素
         self.label_account = QLabel('账户:')
         self.label_password = QLabel('密码:')
@@ -24,6 +30,10 @@ class QQStyleRegistrationWindow(QWidget):
         self.edit_confirm_password = QLineEdit()
         self.edit_username = QLineEdit()
 
+        # 设置密码输入框的回显模式为密码
+        self.edit_password.setEchoMode(QLineEdit.Password)
+        self.edit_confirm_password.setEchoMode(QLineEdit.Password)
+
         self.button_register = QPushButton('注册')
         self.button_register.clicked.connect(self.show_registration_fields)
 
@@ -32,9 +42,6 @@ class QQStyleRegistrationWindow(QWidget):
 
         self.button_confirm = QPushButton('确认')
         self.button_confirm.clicked.connect(self.confirm_button_clicked)
-
-        # 隐藏初始时不需要的输入框
-        self.hide_registration_fields()
 
         # 布局
         layout = QVBoxLayout()
@@ -73,25 +80,53 @@ class QQStyleRegistrationWindow(QWidget):
         self.edit_username.show()
         self.label_confirm_password.show()
         self.edit_confirm_password.show()
-
-    def hide_login_fields(self):
-        self.label_username.hide()
-        self.edit_username.hide()
-        self.label_confirm_password.hide()
-        self.edit_confirm_password.hide()
+        self.edit_account.setText("")
+        self.edit_password.setText("")
+        self.edit_confirm_password.setText("")
+        self.edit_username.setText("")
+        self.current_page = "Register"
 
     def show_login_fields(self):
-        self.hide_login_fields()
+        self.hide_registration_fields()
+        self.edit_account.setText("")
+        self.edit_password.setText("")
+        self.current_page = "Login"
 
     def confirm_button_clicked(self):
         # 处理确认按钮点击事件
-        if self.button_register.isChecked():
+        
+        if self.current_page == "Register":
+            # 处理有的信息为空的情况
+            if self.edit_account.text() == "" or self.edit_password.text() == "" or self.edit_confirm_password.text() == "" or self.edit_username.text() == "":
+                print("尚未填写某些信息")
+                QMessageBox.information(self, "提示", "尚未填写某些信息")
+                return
+
+            if self.edit_password.text() != self.edit_confirm_password.text():
+                print("两次输入的密码不一致！")
+                QMessageBox.information(self, "提示", "两次输入的密码不一致！")
+                return
+            useraccount = self.edit_account.text()
+            userpassword = self.edit_password.text()
             username = self.edit_username.text()
-            print(f"用户 {username} 注册成功！")
+
+            
+            self.client.register_user(UserInfo(useraccount, userpassword, username))
+            print(f"用户 {useraccount} 注册成功！")   
+
             # 这里可以添加保存用户信息或其他相关操作
-        elif self.button_login.isChecked():
-            account = self.edit_account.text()
-            print(f"用户 {account} 登录成功！")
+
+        elif self.current_page == "Login":
+            if self.edit_account.text() == "" or self.edit_password.text() == "":
+                print("尚未填写某些信息")
+                QMessageBox.information(self, "提示", "尚未填写某些信息")
+                return
+
+            useraccount = self.edit_account.text()
+            userpassword = self.edit_password.text()
+
+            self.client.login_user(UserInfo(useraccount, userpassword, ""))
+            print(f"用户 {useraccount} 登录成功！")
             # 这里可以添加登录逻辑
 
     def load_stylesheet(self, filename):
@@ -104,5 +139,5 @@ class QQStyleRegistrationWindow(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    qq_style_registration_window = QQStyleRegistrationWindow()
+    qq_style_registration_window = RegistrationWindow()
     sys.exit(app.exec_())

@@ -25,11 +25,15 @@ class RegistrationWindow(QWidget):
         self.edit_password = QLineEdit()
         self.edit_confirm_password = QLineEdit()
 
+        # 设置密码输入框的回显模式为密码
+        self.edit_password.setEchoMode(QLineEdit.Password)
+        self.edit_confirm_password.setEchoMode(QLineEdit.Password)
+
         self.button_register = QPushButton('注册')
         self.button_register.clicked.connect(self.register_button_clicked)
 
         # 从样式文件中加载样式表
-        self.load_stylesheet('style.qss')
+        self.load_stylesheet('style/style.qss')
 
         # 布局
         layout = QVBoxLayout()
