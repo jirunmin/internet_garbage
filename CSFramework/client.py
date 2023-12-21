@@ -100,4 +100,4 @@ class Client:
 
 if __name__ == "__main__":
     client = Client("localhost", 8000)
-    client.register_user(UserInfo("17326120763", "password123", "John Doe"))
+    client.register_user(UserInfo("123456", "password123", "John Doe"))
