@@ -4,6 +4,7 @@ from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 import json
 import sys
 
+
 class Server:
     def __init__(self, host, port):
         self.host = host
@@ -32,33 +33,51 @@ class Server:
                 response = "SUCCESS"
                 client_socket.send(response.encode())
                 self.login_user(client_socket)
+            else:
+                response = "FAIL"
+                client_socket.send(response.encode())
 
             client_socket.close()
 
     def init_db(self):
         # 初始化数据库连接
-        self.db = QSqlDatabase.addDatabase('QPSQL')
-        self.db.setHostName('localhost')  
-        self.db.setPort(5432)  
-        self.db.setDatabaseName('schoolmis')  
-        self.db.setUserName('postgres')  
-        self.db.setPassword('20130903ab')  
+        self.db = QSqlDatabase.addDatabase("QPSQL")
+        self.db.setHostName("localhost")
+        self.db.setPort(5432)
+        self.db.setDatabaseName("schoolmis")
+        self.db.setUserName("postgres")
+        self.db.setPassword("20130903ab")
 
         if not self.db.open():
             print("Unable to open the database")
             sys.exit(1)
 
     def register_user(self, client_socket):
-        data = client_socket.recv(1024).decode()
-        user_json = json.loads(data)  # Convert JSON string to Python dictionary
-
-        # Extract user information from the dictionary
-        useraccount = user_json['userAccount']
-        userpassword = user_json['userPassword']
-        username = user_json['userName']
+        useraccount = client_socket.recv(1024).decode()
+        userpassword = client_socket.recv(1024).decode()
+        username = client_socket.recv(1024).decode()
 
         query = QSqlQuery()
-        query.prepare('INSERT INTO UserInfo (userAccount, userPassword, userName) VALUES (?, ?, ?)')
+        query.prepare("SELECT * FROM UserInfo WHERE userAccount = ?")
+        query.addBindValue(useraccount)
+
+        if not query.exec_():
+            print("Database Error, Failed to check existing records")
+            response = "FAIL"
+            client_socket.send(response.encode())
+            query.finish()
+            return
+
+        if query.next():
+            print("User account already exists")
+            response = "DUPLICATE"
+            client_socket.send(response.encode())
+            query.finish()
+            return
+
+        query.prepare(
+            "INSERT INTO UserInfo (userAccount, userPassword, userName) VALUES (?, ?, ?)"
+        )
         query.addBindValue(useraccount)
         query.addBindValue(userpassword)
         query.addBindValue(username)
@@ -69,23 +88,21 @@ class Server:
             client_socket.send(response.encode())
         else:
             print("Success")
-            # Send response to client
             response = "SUCCESS"
             client_socket.send(response.encode())
 
         query.finish()
 
-    # 登录函数
     def login_user(self, client_socket):
-        data = client_socket.recv(1024).decode()
-        user_json = json.loads(data)  # Convert JSON string to Python dictionary
+        useraccount = client_socket.recv(1024).decode()
+        userpassword = client_socket.recv(1024).decode()
 
-        # Extract user information from the dictionary
-        useraccount = user_json['userAccount']
-        userpassword = user_json['userPassword']
-
+        print(useraccount, userpassword)
+        
         query = QSqlQuery()
-        query.prepare('SELECT * FROM UserInfo WHERE userAccount = ? AND userPassword = ?')
+        query.prepare(
+            "SELECT * FROM UserInfo WHERE userAccount = ? AND userPassword = ?"
+        )
         query.addBindValue(useraccount)
         query.addBindValue(userpassword)
 
@@ -97,9 +114,26 @@ class Server:
             print("Success")
             # Send response to client
             response = "SUCCESS"
+
             client_socket.send(response.encode())
 
-        query.finish()  
+            user = {
+                "userAccount": None,
+                "userPassword": None,
+                "userName": None,
+            }
+            while query.next():
+                user = {
+                    "userAccount": query.value(0),
+                    "userPassword": query.value(1),
+                    "userName": query.value(2),
+                }
+
+            # 发送user
+            user_json = json.dumps(user)
+            client_socket.send(user_json.encode())
+
+        query.finish()
 
     def stop(self):
         if self.server_socket:
@@ -110,4 +144,3 @@ class Server:
 if __name__ == "__main__":
     server = Server("localhost", 8000)
     server.start()
-
